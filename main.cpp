@@ -88,7 +88,7 @@ public:
     void insert();
     void display_all();
     void update();
-    void search();
+    int search();
     void delete_logical();
     void delete_physical();
 };
@@ -101,12 +101,17 @@ void StudentFile::create()                                              //Create
 
 void StudentFile::insert()                                                  //Insert
 {
-    fObj.open(fileName,ios::out|ios::app);
+    fObj.open(fileName,ios::ate|ios::in|ios::out|ios::app|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
         return;
     }
+    int i=0;
+    while(fObj.read((char *)&obj,sizeof(obj)))
+        i++;
+    
+    fObj.clear();
     obj.read();
     fObj.write((char *)&obj,sizeof(obj));
     fObj.close();
@@ -115,75 +120,68 @@ void StudentFile::insert()                                                  //In
 
 void StudentFile::update()                                                  //Update
 {
-    int found,roll,pos;
-    fObj.open(fileName,ios::out|ios::app);
+    int pos,offset;
+    pos = search();
+    if(pos == -1)
+        return;
+    
+    
+    fObj.open(fileName,ios::in|ios::out|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
         return;
     }
-    cout<<"\nEnter Roll No. to Update : ";
-    cin>>roll;
-    found = 0;
-    while(!fObj.eof())
-    {
-        fObj.read((char *)&obj,sizeof(obj));
-        if(obj.retRoll()==roll)
-        {
-            found = 1;
-            cout<<"\nEnter new Data : ";
-            obj.read();
-            pos = -1 * sizeof(obj);
-            fObj.seekp(pos,ios::cur);
-            fObj.write((char *)&obj,sizeof(obj));
-        }
-    }
-    if(found==1)
-        cout<<"\nRecord Updated Successfully.";
-    else
-        cout<<"\nRecord NOT found!";
+    offset = pos * sizeof(obj);
+    
+    cout<<"\nEnter new data :- \n";
+    obj.read();
+    fObj.seekp(offset,ios::beg);
+    fObj.write((char *)&obj, sizeof(obj));
     fObj.close();
 }
 
-void StudentFile::search()                                                  //Search
+int StudentFile::search()                                                  //Search
 {
-    int found,roll;
-    fObj.open(fileName,ios::in);
+    int roll,i;
+    fObj.open(fileName,ios::in|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
-        return;
+        return -1;
     }
     cout<<"\nEnter Roll No. to Search : ";
     cin>>roll;
-    found = 0;
+    i = 0;
     while(!fObj.eof())
     {
         fObj.read((char *)&obj,sizeof(obj));
         if(obj.retRoll()==roll)
         {
-            found = 1;
             cout<<"\nRecord Found!";
             obj.display();
+            fObj.close();
+            return i;
         }
+        i++;
     }
-    if(found==0)
-        cout<<"\nRecord NOT found!";
     fObj.close();
+    cout << "\nRecord NOT found!";
+    return -1;
 }
 
 void StudentFile::display_all()                                                 //Display All
 {
-    fObj.open(fileName,ios::in);
+    fObj.open(fileName,ios::in|ios::out|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
         return;
     }
-    while(!fObj.eof())
+    while(fObj.read((char *)&obj,sizeof(obj)))
     {
-        fObj.read((char *)&obj,sizeof(obj));
-        obj.display();
+        if(obj.retRoll()!=0)
+            obj.display();
     }
     fObj.close();
 }
@@ -191,7 +189,7 @@ void StudentFile::display_all()                                                 
 void StudentFile::delete_logical()
 {
     int found,roll,pos;
-    fObj.open(fileName,ios::in|ios::out);
+    fObj.open(fileName,ios::in|ios::out|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
@@ -200,9 +198,8 @@ void StudentFile::delete_logical()
     cout<<"\nEnter Roll No. to Delete : ";
     cin>>roll;
     found = 0;
-    while(!fObj.eof())
+    while(fObj.read((char *)&obj,sizeof(obj)))
     {
-        fObj.read((char *)&obj,sizeof(obj));
         if(obj.retRoll()==roll)
         {
             found = 1;
@@ -222,8 +219,8 @@ void StudentFile::delete_logical()
 void StudentFile::delete_physical()
 {
     fstream fObj2;
-    fObj.open(fileName,ios::in);
-    fObj2.open("temp.txt",ios::out);
+    fObj.open(fileName,ios::in|ios::out|ios::binary);
+    fObj2.open("temp.txt",ios::in|ios::out|ios::binary);
     if(fObj.fail())
     {
         cout<<"\nFile opening Error!";
@@ -238,9 +235,8 @@ void StudentFile::delete_physical()
     cout<<"\nEnter Roll No. to Delete : ";
     cin>>roll;
     found = 0;
-    while(!fObj.eof())
+    while(fObj.read((char *)&obj,sizeof(obj)))
     {
-        fObj.read((char *)&obj,sizeof(obj));
         if(obj.retRoll()!=roll)
             fObj2.write((char *)&obj,sizeof(obj));
         else
@@ -249,11 +245,10 @@ void StudentFile::delete_physical()
     fObj.close();
     fObj2.close();
     
-    fObj.open(fileName,ios::out);
-    fObj2.open("temp.txt",ios::in);
-    while(!fObj2.eof())
+    fObj.open(fileName,ios::in|ios::out|ios::binary);
+    fObj2.open("temp.txt",ios::in|ios::out|ios::binary);
+    while(fObj2.read((char *)&obj,sizeof(obj)))
     {
-        fObj2.read((char *)&obj,sizeof(obj));
         fObj.write((char *)&obj,sizeof(obj));
     }
     fObj.close();
